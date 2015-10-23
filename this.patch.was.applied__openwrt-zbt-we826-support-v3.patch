@@ -1,0 +1,229 @@
+diff --git a/target/linux/ramips/base-files/etc/board.d/01_leds b/target/linux/ramips/base-files/etc/board.d/01_leds
+index 71cf3ac..94d706b 100755
+--- a/target/linux/ramips/base-files/etc/board.d/01_leds
++++ b/target/linux/ramips/base-files/etc/board.d/01_leds
+@@ -240,6 +240,11 @@ zbt-wr8305rt)
+ 	set_usb_led "$board:green:usb"
+ 	set_wifi_led "$board:green:wifi"
+ 	;;
++	zbt-we826)
++		ucidef_set_led_default "power" "power" "we826:power" "1"
++		set_wifi_led "we826:wlan"
++		set_usb_led "we826:wps"
++		;;
+ zte-q7)
+ 	set_wifi_led "$board:blue:status"
+ 	;;
+diff --git a/target/linux/ramips/base-files/etc/board.d/02_network b/target/linux/ramips/base-files/etc/board.d/02_network
+index 6a2f042..54798e9 100755
+--- a/target/linux/ramips/base-files/etc/board.d/02_network
++++ b/target/linux/ramips/base-files/etc/board.d/02_network
+@@ -223,7 +223,8 @@ ramips_setup_interfaces()
+ 		ucidef_add_switch_vlan "switch0" "1" "1 2 3 4 5 6t"
+ 		ucidef_add_switch_vlan "switch0" "2" "0 6t"
+ 		;;
+-	zbt-wr8305rt)
++	zbt-wr8305rt|\
++	zbt-we826)
+ 		ucidef_set_interfaces_lan_wan "eth0.1" "eth0.2"
+ 		ucidef_add_switch "switch0" "1" "1"
+ 		ucidef_add_switch_vlan "switch0" "1" "0 1 2 3 4 6t"
+diff --git a/target/linux/ramips/base-files/lib/ramips.sh b/target/linux/ramips/base-files/lib/ramips.sh
+index 5cafd45..2543384 100755
+--- a/target/linux/ramips/base-files/lib/ramips.sh
++++ b/target/linux/ramips/base-files/lib/ramips.sh
+@@ -430,6 +430,9 @@ ramips_board_detect() {
+ 	*"ZBT-WR8305RT")
+ 		name="zbt-wr8305rt"
+ 		;;
++	*"ZBT WE-826")
++		name="zbt-we826"
++		;;
+ 	*)
+ 		name="generic"
+ 		;;
+diff --git a/target/linux/ramips/base-files/lib/upgrade/platform.sh b/target/linux/ramips/base-files/lib/upgrade/platform.sh
+index 53e7070..e233f0d 100755
+--- a/target/linux/ramips/base-files/lib/upgrade/platform.sh
++++ b/target/linux/ramips/base-files/lib/upgrade/platform.sh
+@@ -127,6 +127,7 @@ platform_check_image() {
+ 	y1s|\
+ 	zbt-wa05|\
+ 	zbt-wr8305rt|\
++	zbt-we826|\
+ 	zte-q7)
+ 		[ "$magic" != "27051956" ] && {
+ 			echo "Invalid image type."
+diff --git a/target/linux/ramips/dts/ZBT-WE826.dts b/target/linux/ramips/dts/ZBT-WE826.dts
+index e69de29..85e6351 100644
+--- a/target/linux/ramips/dts/ZBT-WE826.dts
++++ b/target/linux/ramips/dts/ZBT-WE826.dts
+@@ -0,0 +1,124 @@
++/dts-v1/;
++
++/include/ "mt7620a.dtsi"
++
++/ {
++	compatible = "zbtlink,zbt-we826", "ralink,mt7620a-soc";
++	model = "ZBT WE-826";
++
++	chosen {
++		bootargs = "console=ttyS0,115200";
++	};
++
++	palmbus@10000000 {
++		gpio0: gpio@600 {
++			status = "okay";
++		};
++
++		gpio1: gpio@638 {
++			status = "okay";
++		};
++
++		gpio3: gpio@688 {
++			status = "okay";
++		};
++
++		spi@b00 {
++			status = "okay";
++
++			en25q128@0 {
++				#address-cells = <1>;
++				#size-cells = <1>;
++				compatible = "w25q128";
++				reg = <0 0>;
++				linux,modalias = "m25p80";
++				spi-max-frequency = <10000000>;
++
++				partition@0 {
++					label = "u-boot";
++					reg = <0x0 0x30000>;
++					read-only;
++				};
++
++				partition@30000 {
++					label = "u-boot-env";
++					reg = <0x30000 0x10000>;
++					read-only;
++				};
++
++				factory: partition@40000 {
++					label = "factory";
++					reg = <0x40000 0x10000>;
++					read-only;
++				};
++
++				partition@50000 {
++					label = "firmware";
++					reg = <0x50000 0xfb0000>;
++				};
++			};
++		};
++	};
++
++	sdhci@10130000 {
++		status = "okay";
++	};
++
++	ehci@101c0000 {
++		status = "okay";
++	};
++
++	ohci@101c1000 {
++		status = "okay";
++	};
++
++	ethernet@10100000 {
++		mtd-mac-address = <&factory 0x4>;
++		ralink,port-map = "wllll";
++	};
++
++	wmac@10180000 {
++		ralink,mtd-eeprom = <&factory 0>;
++	};
++
++	pinctrl {
++		state_default: pinctrl0 {
++			default {
++				ralink,group = "i2c", "uartf", "wled", "spi refclk", "pa";
++				ralink,function = "gpio";
++			};
++		};
++	};
++
++	gpio-leds {
++		compatible = "gpio-leds";
++		power {
++			label = "we826:power";
++			gpios = <&gpio1 14 0>;
++		};
++		usb {
++			label = "we826:wps";
++			gpios = <&gpio1 15 0>;
++		};
++		air {
++			label = "we826:wlan";
++			gpios = <&gpio3 0 1>;
++		};
++	};
++
++	gpio-keys-polled {
++		compatible = "gpio-keys-polled";
++		#address-cells = <1>;
++		#size-cells = <0>;
++		poll-interval = <20>;
++		reset {
++			label = "reset";
++			gpios = <&gpio0 1 1>;
++			linux,code = <0x198>;
++		};
++	};
++
++	pcie@10140000 {
++		status = "okay";
++	};
++};
+diff --git a/target/linux/ramips/image/Makefile b/target/linux/ramips/image/Makefile
+index 2f4d4cb..8b791b3 100644
+--- a/target/linux/ramips/image/Makefile
++++ b/target/linux/ramips/image/Makefile
+@@ -882,6 +882,7 @@ Image/Build/Profile/MIWIFI-MINI=$(call BuildFirmware/Default16M/$(1),$(1),miwifi
+ Image/Build/Profile/ZTE-Q7=$(call BuildFirmware/Default8M/$(1),$(1),zte-q7,ZTE-Q7)
+ Image/Build/Profile/ZBT-WA05=$(call BuildFirmware/Default8M/$(1),$(1),zbt-wa05,ZBT-WA05)
+ Image/Build/Profile/ZBT-WR8305RT=$(call BuildFirmware/Default8M/$(1),$(1),zbt-wr8305rt,ZBT-WR8305RT)
++Image/Build/Profile/ZBT-WE826=$(call BuildFirmware/Default16M/$(1),$(1),zbt-we826,ZBT-WE826)
+ Image/Build/Profile/ArcherC20i=$(call BuildFirmware/Tplink/$(1),$(1),ArcherC20i,ArcherC20i)
+ microwrt_mtd_size=16515072
+ Image/Build/Profile/MicroWRT=$(call BuildFirmware/CustomFlash/$(1),$(1),microwrt,MicroWRT,$(microwrt_mtd_size))
+@@ -916,6 +917,7 @@ define Image/Build/Profile/Default
+ 	$(call Image/Build/Profile/ZTE-Q7,$(1))
+ 	$(call Image/Build/Profile/ZBT-WA05,$(1))
+ 	$(call Image/Build/Profile/ZBT-WR8305RT,$(1))
++	$(call Image/Build/Profile/ZBT-WE826,$(1))
+ 	$(call Image/Build/Profile/ArcherC20i,$(1))
+ 	$(call Image/Build/Profile/MicroWRT,$(1))
+ endef
+diff --git a/target/linux/ramips/mt7620/profiles/zbt-we826.mk b/target/linux/ramips/mt7620/profiles/zbt-we826.mk
+index e69de29..232acd3 100644
+--- a/target/linux/ramips/mt7620/profiles/zbt-we826.mk
++++ b/target/linux/ramips/mt7620/profiles/zbt-we826.mk
+@@ -0,0 +1,19 @@
++#
++# Copyright (C) 2015 OpenWrt.org
++#
++# This is free software, licensed under the GNU General Public License v2.
++# See /LICENSE for more information.
++#
++
++define Profile/ZBT-WE826
++	NAME:=ZBT WE-826
++	PACKAGES:=\
++		kmod-scsi-core kmod-scsi-generic kmod-mmc kmod-sdhci \
++		block-mount kmod-usb-core kmod-usb-dwc2 kmod-usb2 kmod-usb-ohci \
++		kmod-mt76
++endef
++
++define Profile/ZBT-WE826/Description
++	Support for ZBT WE-826-(B,T) routers
++endef
++$(eval $(call Profile,ZBT-WE826))
