@@ -243,6 +243,11 @@ zbt-wr8305rt)
 	set_usb_led "$board:green:usb"
 	set_wifi_led "$board:green:wifi"
 	;;
+	zbt-we826)
+		ucidef_set_led_default "power" "power" "we826:power" "1"
+		set_wifi_led "we826:wlan"
+		set_usb_led "we826:wps"
+		;;
 zte-q7)
 	set_wifi_led "$board:blue:status"
 	;;

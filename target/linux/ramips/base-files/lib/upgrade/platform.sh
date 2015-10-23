@@ -129,6 +129,7 @@ platform_check_image() {
 	y1s|\
 	zbt-wa05|\
 	zbt-wr8305rt|\
+	zbt-we826|\
 	zte-q7)
 		[ "$magic" != "27051956" ] && {
 			echo "Invalid image type."

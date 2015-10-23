@@ -436,6 +436,9 @@ ramips_board_detect() {
 	*"ZBT-WR8305RT")
 		name="zbt-wr8305rt"
 		;;
+	*"ZBT WE-826")
+		name="zbt-we826"
+		;;
 	*)
 		name="generic"
 		;;
